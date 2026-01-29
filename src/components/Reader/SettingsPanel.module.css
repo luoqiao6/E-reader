@@ -17,10 +17,10 @@
 }
 
 .title {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 18px;
   font-weight: 600;
-  font-style: italic;
+  font-style: normal;
   color: var(--color-black);
   margin: 0;
 }

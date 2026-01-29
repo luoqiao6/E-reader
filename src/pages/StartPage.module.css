@@ -22,10 +22,10 @@
 }
 
 .appName {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 18px;
   font-weight: 600;
-  font-style: italic;
+  font-style: normal;
   color: var(--color-black);
 }
 
@@ -76,10 +76,10 @@
 }
 
 .welcomeTitle {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 48px;
   font-weight: 400;
-  font-style: italic;
+  font-style: normal;
   color: var(--color-black);
   margin: 0;
 }
@@ -195,10 +195,10 @@
 }
 
 .sectionTitle {
-  font-family: var(--font-serif);
+  font-family: var(--font-sans);
   font-size: 28px;
   font-weight: 400;
-  font-style: italic;
+  font-style: normal;
   color: var(--color-black);
   margin: 0;
 }
