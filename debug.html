@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>电子书阅读器 - 数据库调试工具</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', sans-serif;
+      padding: 24px;
+      background-color: #f5f5f5;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 24px;
+      color: #333;
+    }
+
+    h2 {
+      font-size: 18px;
+      margin: 24px 0 12px;
+      color: #555;
+      border-bottom: 2px solid #eee;
+      padding-bottom: 8px;
+    }
+
+    button {
+      padding: 12px 24px;
+      background-color: #000;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      margin-right: 12px;
+      margin-bottom: 12px;
+    }
+
+    button:hover {
+      opacity: 0.9;
+    }
+
+    button.danger {
+      background-color: #dc2626;
+    }
+
+    button.secondary {
+      background-color: #6b7280;
+    }
+
+    .info-box {
+      background-color: #f0f9ff;
+      border: 1px solid #bae6fd;
+      border-radius: 4px;
+      padding: 16px;
+      margin: 12px 0;
+    }
+
+    .error-box {
+      background-color: #fef2f2;
+      border: 1px solid #fecaca;
+      border-radius: 4px;
+      padding: 16px;
+      margin: 12px 0;
+      color: #dc2626;
+    }
+
+    .success-box {
+      background-color: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 4px;
+      padding: 16px;
+      margin: 12px 0;
+      color: #16a34a;
+    }
+
+    pre {
+      background-color: #1e293b;
+      color: #e2e8f0;
+      padding: 16px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 13px;
+      line-height: 1.6;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+
+    th {
+      background-color: #f9fafb;
+      font-weight: 600;
+      color: #374151;
+    }
+
+    tr:hover {
+      background-color: #f9fafb;
+    }
+
+    .stat {
+      display: inline-block;
+      background-color: #eff6ff;
+      padding: 8px 16px;
+      border-radius: 4px;
+      margin-right: 12px;
+      margin-bottom: 12px;
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: #6b7280;
+    }
+
+    .stat-value {
+      font-size: 24px;
+      font-weight: 600;
+      color: #1f2937;
+    }
+
+    #result {
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📚 电子书阅读器 - 数据库调试工具</h1>
+
+    <div class="info-box">
+      <strong>说明：</strong>此工具用于检查和管理 IndexedDB 中的书籍数据。
+    </div>
+
+    <h2>📊 数据库统计</h2>
+    <div id="stats"></div>
+
+    <h2>🛠️ 操作</h2>
+    <button onclick="checkDatabase()">检查数据库</button>
+    <button onclick="listBooks()">列出所有书籍</button>
+    <button onclick="checkBookContent()">检查书籍内容</button>
+    <button class="secondary" onclick="exportData()">导出数据（JSON）</button>
+    <button class="danger" onclick="clearDatabase()">清空数据库</button>
+
+    <h2>📋 结果</h2>
+    <div id="result"></div>
+  </div>
+
+  <script>
+    const DB_NAME = 'ebook-reader-db';
+    const DB_VERSION = 1;
+
+    // 打开数据库
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    // 检查数据库
+    async function checkDatabase() {
+      const result = document.getElementById('result');
+      result.innerHTML = '<div class="info-box">正在检查数据库...</div>';
+
+      try {
+        const db = await openDB();
+        const objectStoreNames = Array.from(db.objectStoreNames);
+        
+        result.innerHTML = `
+          <div class="success-box">
+            <strong>✅ 数据库连接成功</strong><br>
+            数据库名称: ${db.name}<br>
+            数据库版本: ${db.version}<br>
+            对象存储: ${objectStoreNames.join(', ')}
+          </div>
+        `;
+
+        db.close();
+        await showStats();
+      } catch (error) {
+        result.innerHTML = `
+          <div class="error-box">
+            <strong>❌ 数据库连接失败</strong><br>
+            ${error.message}
+          </div>
+        `;
+      }
+    }
+
+    // 显示统计信息
+    async function showStats() {
+      try {
+        const db = await openDB();
+        const tx = db.transaction(['books', 'bookContent', 'readingProgress'], 'readonly');
+        
+        const booksCount = await new Promise((resolve) => {
+          const request = tx.objectStore('books').count();
+          request.onsuccess = () => resolve(request.result);
+        });
+
+        const contentCount = await new Promise((resolve) => {
+          const request = tx.objectStore('bookContent').count();
+          request.onsuccess = () => resolve(request.result);
+        });
+
+        const progressCount = await new Promise((resolve) => {
+          const request = tx.objectStore('readingProgress').count();
+          request.onsuccess = () => resolve(request.result);
+        });
+
+        document.getElementById('stats').innerHTML = `
+          <div class="stat">
+            <div class="stat-label">书籍数量</div>
+            <div class="stat-value">${booksCount}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">内容记录</div>
+            <div class="stat-value">${contentCount}</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">进度记录</div>
+            <div class="stat-value">${progressCount}</div>
+          </div>
+        `;
+
+        db.close();
+      } catch (error) {
+        document.getElementById('stats').innerHTML = `
+          <div class="error-box">无法获取统计信息: ${error.message}</div>
+        `;
+      }
+    }
+
+    // 列出所有书籍
+    async function listBooks() {
+      const result = document.getElementById('result');
+      result.innerHTML = '<div class="info-box">正在加载书籍列表...</div>';
+
+      try {
+        const db = await openDB();
+        const tx = db.transaction('books', 'readonly');
+        const store = tx.objectStore('books');
+        
+        const books = await new Promise((resolve, reject) => {
+          const request = store.getAll();
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+
+        if (books.length === 0) {
+          result.innerHTML = '<div class="info-box">数据库中没有书籍</div>';
+        } else {
+          let html = `
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>标题</th>
+                  <th>作者</th>
+                  <th>格式</th>
+                  <th>进度</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+          `;
+
+          books.forEach(book => {
+            html += `
+              <tr>
+                <td><code>${book.id}</code></td>
+                <td>${book.title}</td>
+                <td>${book.author}</td>
+                <td>${book.format.toUpperCase()}</td>
+                <td>${book.progress.toFixed(1)}%</td>
+                <td>
+                  <button class="secondary" onclick="viewBookContent('${book.id}')">查看内容</button>
+                  <button class="danger" onclick="deleteBook('${book.id}')">删除</button>
+                </td>
+              </tr>
+            `;
+          });
+
+          html += '</tbody></table>';
+          result.innerHTML = html;
+        }
+
+        db.close();
+      } catch (error) {
+        result.innerHTML = `
+          <div class="error-box">
+            <strong>❌ 加载失败</strong><br>
+            ${error.message}
+          </div>
+        `;
+      }
+    }
+
+    // 查看书籍内容
+    async function viewBookContent(bookId) {
+      const result = document.getElementById('result');
+      result.innerHTML = '<div class="info-box">正在加载书籍内容...</div>';
+
+      try {
+        const db = await openDB();
+        const tx = db.transaction('bookContent', 'readonly');
+        const store = tx.objectStore('bookContent');
+        
+        const contentData = await new Promise((resolve, reject) => {
+          const request = store.get(bookId);
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+
+        if (!contentData) {
+          result.innerHTML = `
+            <div class="error-box">
+              <strong>❌ 未找到书籍内容</strong><br>
+              书籍 ID: ${bookId}
+            </div>
+          `;
+        } else {
+          const content = JSON.parse(contentData.content);
+          result.innerHTML = `
+            <div class="success-box">
+              <strong>✅ 书籍内容信息</strong><br>
+              书籍 ID: ${bookId}<br>
+              格式: ${content.format}<br>
+              章节数量: ${content.chapters.length}<br>
+              更新时间: ${new Date(contentData.updatedAt).toLocaleString()}
+            </div>
+            <h3>章节列表</h3>
+            <pre>${JSON.stringify(content.chapters.map(ch => ({
+              id: ch.id,
+              title: ch.title,
+              contentLength: ch.content.length,
+              order: ch.order
+            })), null, 2)}</pre>
+          `;
+        }
+
+        db.close();
+      } catch (error) {
+        result.innerHTML = `
+          <div class="error-box">
+            <strong>❌ 加载失败</strong><br>
+            ${error.message}
+          </div>
+        `;
+      }
+    }
+
+    // 检查所有书籍内容
+    async function checkBookContent() {
+      const result = document.getElementById('result');
+      result.innerHTML = '<div class="info-box">正在检查所有书籍内容...</div>';
+
+      try {
+        const db = await openDB();
+        
+        // 获取所有书籍
+        const booksTx = db.transaction('books', 'readonly');
+        const books = await new Promise((resolve) => {
+          const request = booksTx.objectStore('books').getAll();
+          request.onsuccess = () => resolve(request.result);
+        });
+
+        // 检查每本书的内容
+        const contentTx = db.transaction('bookContent', 'readonly');
+        const contentStore = contentTx.objectStore('bookContent');
+
+        const results = [];
+        for (const book of books) {
+          const contentData = await new Promise((resolve) => {
+            const request = contentStore.get(book.id);
+            request.onsuccess = () => resolve(request.result);
+          });
+
+          if (contentData) {
+            try {
+              const content = JSON.parse(contentData.content);
+              results.push({
+                id: book.id,
+                title: book.title,
+                hasContent: true,
+                chaptersCount: content.chapters.length,
+                totalContentLength: content.chapters.reduce((sum, ch) => sum + ch.content.length, 0)
+              });
+            } catch (e) {
+              results.push({
+                id: book.id,
+                title: book.title,
+                hasContent: true,
+                error: '内容解析失败: ' + e.message
+              });
+            }
+          } else {
+            results.push({
+              id: book.id,
+              title: book.title,
+              hasContent: false,
+              error: '内容记录不存在'
+            });
+          }
+        }
+
+        let html = '<h3>书籍内容检查结果</h3><table><thead><tr><th>书名</th><th>状态</th><th>章节数</th><th>总字数</th></tr></thead><tbody>';
+        results.forEach(r => {
+          const status = r.error ? `<span style="color: #dc2626;">${r.error}</span>` : 
+                        r.hasContent ? '<span style="color: #16a34a;">✅ 正常</span>' : 
+                        '<span style="color: #dc2626;">❌ 无内容</span>';
+          html += `
+            <tr>
+              <td>${r.title}</td>
+              <td>${status}</td>
+              <td>${r.chaptersCount || '-'}</td>
+              <td>${r.totalContentLength ? r.totalContentLength.toLocaleString() : '-'}</td>
+            </tr>
+          `;
+        });
+        html += '</tbody></table>';
+
+        result.innerHTML = html;
+        db.close();
+      } catch (error) {
+        result.innerHTML = `
+          <div class="error-box">
+            <strong>❌ 检查失败</strong><br>
+            ${error.message}
+          </div>
+        `;
+      }
+    }
+
+    // 删除书籍
+    async function deleteBook(bookId) {
+      if (!confirm('确定要删除这本书吗？此操作无法撤销。')) {
+        return;
+      }
+
+      try {
+        const db = await openDB();
+        const tx = db.transaction(['books', 'bookContent', 'readingProgress'], 'readwrite');
+        
+        await Promise.all([
+          new Promise((resolve) => {
+            const request = tx.objectStore('books').delete(bookId);
+            request.onsuccess = () => resolve();
+          }),
+          new Promise((resolve) => {
+            const request = tx.objectStore('bookContent').delete(bookId);
+            request.onsuccess = () => resolve();
+          }),
+          new Promise((resolve) => {
+            const request = tx.objectStore('readingProgress').delete(bookId);
+            request.onsuccess = () => resolve();
+          })
+        ]);
+
+        db.close();
+        alert('删除成功！');
+        listBooks();
+        showStats();
+      } catch (error) {
+        alert('删除失败: ' + error.message);
+      }
+    }
+
+    // 导出数据
+    async function exportData() {
+      try {
+        const db = await openDB();
+        const tx = db.transaction(['books', 'bookContent'], 'readonly');
+        
+        const books = await new Promise((resolve) => {
+          const request = tx.objectStore('books').getAll();
+          request.onsuccess = () => resolve(request.result);
+        });
+
+        const contents = await new Promise((resolve) => {
+          const request = tx.objectStore('bookContent').getAll();
+          request.onsuccess = () => resolve(request.result);
+        });
+
+        const data = {
+          exportTime: new Date().toISOString(),
+          books,
+          contents
+        };
+
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ebook-data-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+
+        db.close();
+        alert('数据导出成功！');
+      } catch (error) {
+        alert('导出失败: ' + error.message);
+      }
+    }
+
+    // 清空数据库
+    async function clearDatabase() {
+      if (!confirm('确定要清空所有数据吗？此操作无法撤销！')) {
+        return;
+      }
+
+      if (!confirm('再次确认：清空后所有书籍和阅读进度将永久丢失！')) {
+        return;
+      }
+
+      try {
+        const request = indexedDB.deleteDatabase(DB_NAME);
+        request.onsuccess = () => {
+          alert('数据库已清空！页面将自动刷新。');
+          location.reload();
+        };
+        request.onerror = () => {
+          alert('清空失败: ' + request.error.message);
+        };
+      } catch (error) {
+        alert('清空失败: ' + error.message);
+      }
+    }
+
+    // 页面加载时显示统计
+    window.onload = () => {
+      showStats();
+    };
+  </script>
+</body>
+</html>

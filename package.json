@@ -1,0 +1,40 @@
+{
+  "name": "ebook-reader",
+  "version": "1.0.0",
+  "main": "electron/main.js",
+  "type": "module",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "keywords": [
+    "ebook",
+    "reader",
+    "electron"
+  ],
+  "author": "",
+  "license": "ISC",
+  "description": "一个简洁优雅的电子书阅读器",
+  "dependencies": {
+    "epubjs": "^0.3.93",
+    "idb": "^8.0.3",
+    "pdfjs-dist": "^5.4.530",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "zustand": "^5.0.10"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.7",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^5.1.2",
+    "electron": "^40.1.0",
+    "electron-builder": "^26.4.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.3.1"
+  }
+}
